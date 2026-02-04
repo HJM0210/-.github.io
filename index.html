@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>贪吃蛇游戏 - 笔记本版</title>
     <style>
         * {
@@ -10,6 +10,7 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            touch-action: manipulation; /* 改善触摸体验 */
         }
         
         body {
@@ -73,6 +74,7 @@
         
         #gameCanvas {
             display: block;
+            touch-action: none; /* 防止画布上的触摸事件被浏览器默认处理 */
         }
         
         .game-info {
@@ -213,7 +215,7 @@
         }
         
         button {
-            padding: 10px 18px;
+            padding: 12px 18px;
             font-size: 0.95rem;
             background-color: #4ecca3;
             color: #1a1a2e;
@@ -225,6 +227,7 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             flex: 1;
             min-width: 120px;
+            touch-action: manipulation; /* 改善触摸体验 */
         }
         
         button:hover {
@@ -317,6 +320,7 @@
             justify-content: center;
             gap: 5px;
             margin-top: 10px;
+            display: none;
         }
         
         .key {
@@ -328,6 +332,89 @@
             font-size: 0.8rem;
             font-family: monospace;
             border: 1px solid #555;
+        }
+        
+        .touch-control-hint {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .touch-icon {
+            display: inline-block;
+            background-color: #4ecca3;
+            color: #1a1a2e;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .touch-area-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+        
+        .touch-direction {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(78, 204, 163, 0.2);
+            border: 2px solid rgba(78, 204, 163, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #4ecca3;
+            font-size: 1.2rem;
+        }
+        
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 15px;
+            }
+            
+            .game-buttons {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+        
+        /* 手机设备检测 */
+        @media (hover: none) and (pointer: coarse) {
+            body {
+                padding: 10px;
+            }
+            
+            .game-container {
+                padding: 15px;
+                max-width: 100%;
+            }
+            
+            .control-info {
+                font-size: 0.9rem;
+                padding: 5px;
+                background-color: rgba(78, 204, 163, 0.1);
+                border-radius: 5px;
+            }
+            
+            button {
+                padding: 14px 20px;
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
@@ -341,6 +428,9 @@
         <div class="game-wrapper">
             <div class="game-board">
                 <canvas id="gameCanvas" width="500" height="450"></canvas>
+                <div class="touch-area-indicator" id="touchAreaIndicator">
+                    <!-- 触摸方向指示器将在这里动态生成 -->
+                </div>
             </div>
             
             <div class="game-info">
@@ -379,9 +469,13 @@
                             <input type="radio" id="controlKeyboard" name="controlType" value="keyboard">
                             <label for="controlKeyboard">键盘控制 (方向键)</label>
                         </div>
+                        <div class="control-option" id="touchControlOption">
+                            <input type="radio" id="controlTouch" name="controlType" value="touch">
+                            <label for="controlTouch">触摸控制 (手机)</label>
+                        </div>
                     </div>
                     
-                    <div class="key-control-hint" id="keyControlHint" style="display: none;">
+                    <div class="key-control-hint" id="keyControlHint">
                         <div class="key">↑</div>
                         <div class="key">↓</div>
                         <div class="key">←</div>
@@ -389,15 +483,20 @@
                         <div>方向键控制</div>
                     </div>
                     
+                    <div class="touch-control-hint" id="touchControlHint">
+                        <div class="touch-icon">触摸屏幕控制方向</div>
+                    </div>
+                    
                     <div class="control-info" id="controlInfo">当前控制方式：鼠标控制</div>
                     
                     <h3 style="margin-top: 15px;">游戏控制</h3>
                     <ul class="controls-list">
-                        <li><span class="snake">蛇</span>会跟随鼠标/方向键移动</li>
+                        <li><span class="snake">蛇</span>会跟随鼠标/方向键/触摸移动</li>
                         <li>吃到<span class="food">红色食物</span>获得5分</li>
                         <li>避免撞到墙壁或自己的身体</li>
                         <li>达到10000分即可获胜！</li>
                         <li>暂停/继续：<span class="key">P</span>键或暂停按钮</li>
+                        <li>隐藏功能：<span class="key">空格键</span>激活无敌状态</li>
                     </ul>
                     
                     <div class="game-buttons">
@@ -412,7 +511,7 @@
                 
                 <div class="instructions">
                     <h3>游戏规则</h3>
-                    <p>1. 选择控制方式：鼠标或键盘方向键</p>
+                    <p>1. 选择控制方式：鼠标、键盘或触摸</p>
                     <p>2. 吃到红色食物可增加5分</p>
                     <p>3. 蛇身会随着吃到食物而变长</p>
                     <p>4. 撞到墙壁或自己的身体游戏结束</p>
@@ -444,10 +543,14 @@
         const restartBtn = document.getElementById('restartBtn');
         const mouseControlOption = document.getElementById('mouseControlOption');
         const keyboardControlOption = document.getElementById('keyboardControlOption');
+        const touchControlOption = document.getElementById('touchControlOption');
         const controlMouseRadio = document.getElementById('controlMouse');
         const controlKeyboardRadio = document.getElementById('controlKeyboard');
+        const controlTouchRadio = document.getElementById('controlTouch');
         const controlInfo = document.getElementById('controlInfo');
         const keyControlHint = document.getElementById('keyControlHint');
+        const touchControlHint = document.getElementById('touchControlHint');
+        const touchAreaIndicator = document.getElementById('touchAreaIndicator');
         
         // 游戏变量
         let snake = [];
@@ -463,9 +566,16 @@
         let gameWon = false;
         
         // 控制变量
-        let controlMode = 'mouse'; // 'mouse' 或 'keyboard'
+        let controlMode = 'mouse'; // 'mouse' 或 'keyboard' 或 'touch'
         let lastMouseUpdateTime = 0;
         const MOUSE_UPDATE_INTERVAL = 16; // 约60fps
+        
+        // 触摸控制变量
+        let isTouching = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let lastTouchUpdateTime = 0;
+        const TOUCH_UPDATE_INTERVAL = 50; // 触摸更新间隔，避免过于频繁
         
         // 隐藏功能变量
         let isInvincible = false;
@@ -1007,6 +1117,10 @@
                 invincibleIndicator.style.display = "none";
             }
             
+            // 隐藏触摸方向指示器
+            touchAreaIndicator.style.display = "none";
+            clearTouchIndicators();
+            
             if (gameWon) {
                 gameStatusElement.textContent = "恭喜！你获得了10000分，游戏胜利！";
                 gameStatusElement.style.color = "#4ecca3";
@@ -1089,6 +1203,152 @@
             }
         }
         
+        // 触摸控制方向
+        function handleTouchControl(e) {
+            if (!gameRunning || gamePaused || controlMode !== 'touch') return;
+            
+            // 阻止默认行为，防止页面滚动和缩放
+            e.preventDefault();
+            
+            const now = Date.now();
+            if (now - lastTouchUpdateTime < TOUCH_UPDATE_INTERVAL) return;
+            lastTouchUpdateTime = now;
+            
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            
+            if (!touch) return;
+            
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
+            
+            // 显示触摸方向指示器
+            updateTouchIndicator(touchX, touchY);
+            
+            // 计算蛇头位置（像素）
+            const head = snake[0];
+            const headX = head.x * gridSize + gridSize / 2;
+            const headY = head.y * gridSize + gridSize / 2;
+            
+            // 计算触摸点相对于蛇头的方向
+            const deltaX = touchX - headX;
+            const deltaY = touchY - headY;
+            
+            // 根据触摸位置决定方向
+            // 优先考虑水平或垂直方向中较大的偏移
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // 水平方向
+                if (deltaX > 30 && direction.x !== -1) { // 增加触摸阈值
+                    nextDirection = { x: 1, y: 0 }; // 向右
+                } else if (deltaX < -30 && direction.x !== 1) {
+                    nextDirection = { x: -1, y: 0 }; // 向左
+                }
+            } else {
+                // 垂直方向
+                if (deltaY > 30 && direction.y !== -1) {
+                    nextDirection = { x: 0, y: 1 }; // 向下
+                } else if (deltaY < -30 && direction.y !== 1) {
+                    nextDirection = { x: 0, y: -1 }; // 向上
+                }
+            }
+        }
+        
+        // 更新触摸方向指示器
+        function updateTouchIndicator(touchX, touchY) {
+            // 清除之前的指示器
+            clearTouchIndicators();
+            
+            // 显示触摸区域
+            touchAreaIndicator.style.display = "block";
+            
+            // 创建触摸点指示器
+            const touchPoint = document.createElement("div");
+            touchPoint.className = "touch-direction";
+            touchPoint.textContent = "•";
+            touchPoint.style.left = (touchX - 20) + "px";
+            touchPoint.style.top = (touchY - 20) + "px";
+            touchAreaIndicator.appendChild(touchPoint);
+            
+            // 计算蛇头位置
+            const head = snake[0];
+            const headX = head.x * gridSize + gridSize / 2;
+            const headY = head.y * gridSize + gridSize / 2;
+            
+            // 创建方向箭头指示器
+            const deltaX = touchX - headX;
+            const deltaY = touchY - headY;
+            
+            // 在触摸点和蛇头之间画一条线
+            const line = document.createElement("div");
+            line.style.position = "absolute";
+            line.style.left = headX + "px";
+            line.style.top = headY + "px";
+            line.style.width = Math.sqrt(deltaX * deltaX + deltaY * deltaY) + "px";
+            line.style.height = "2px";
+            line.style.backgroundColor = "rgba(78, 204, 163, 0.5)";
+            line.style.transformOrigin = "0 0";
+            line.style.transform = `rotate(${Math.atan2(deltaY, deltaX)}rad)`;
+            line.style.zIndex = "9";
+            touchAreaIndicator.appendChild(line);
+            
+            // 在蛇头位置创建方向指示器
+            const directionIndicator = document.createElement("div");
+            directionIndicator.className = "touch-direction";
+            
+            // 根据方向设置文本
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                directionIndicator.textContent = deltaX > 0 ? "→" : "←";
+            } else {
+                directionIndicator.textContent = deltaY > 0 ? "↓" : "↑";
+            }
+            
+            directionIndicator.style.left = (headX - 20) + "px";
+            directionIndicator.style.top = (headY - 20) + "px";
+            directionIndicator.style.backgroundColor = "rgba(78, 204, 163, 0.8)";
+            directionIndicator.style.fontSize = "1.5rem";
+            touchAreaIndicator.appendChild(directionIndicator);
+        }
+        
+        // 清除触摸指示器
+        function clearTouchIndicators() {
+            while (touchAreaIndicator.firstChild) {
+                touchAreaIndicator.removeChild(touchAreaIndicator.firstChild);
+            }
+        }
+        
+        // 触摸开始事件
+        function handleTouchStart(e) {
+            if (!gameRunning || gamePaused || controlMode !== 'touch') return;
+            
+            isTouching = true;
+            const touch = e.touches[0];
+            if (touch) {
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+            }
+            
+            // 立即处理触摸
+            handleTouchControl(e);
+        }
+        
+        // 触摸移动事件
+        function handleTouchMove(e) {
+            if (!gameRunning || gamePaused || controlMode !== 'touch') return;
+            
+            e.preventDefault(); // 防止页面滚动
+            handleTouchControl(e);
+        }
+        
+        // 触摸结束事件
+        function handleTouchEnd(e) {
+            if (controlMode !== 'touch') return;
+            
+            isTouching = false;
+            // 隐藏触摸指示器
+            touchAreaIndicator.style.display = "none";
+            clearTouchIndicators();
+        }
+        
         // 键盘控制（隐藏功能）
         function handleKeyboardInput(e) {
             // 空格键激活无敌状态
@@ -1112,19 +1372,51 @@
                 controlMode = 'mouse';
                 mouseControlOption.classList.add('active');
                 keyboardControlOption.classList.remove('active');
+                touchControlOption.classList.remove('active');
                 keyControlHint.style.display = 'none';
+                touchControlHint.style.display = 'none';
                 controlInfo.textContent = "当前控制方式：鼠标控制";
-            } else {
+                
+                // 隐藏触摸指示器
+                touchAreaIndicator.style.display = "none";
+                clearTouchIndicators();
+            } else if (controlKeyboardRadio.checked) {
                 controlMode = 'keyboard';
                 mouseControlOption.classList.remove('active');
                 keyboardControlOption.classList.add('active');
+                touchControlOption.classList.remove('active');
                 keyControlHint.style.display = 'flex';
+                touchControlHint.style.display = 'none';
                 controlInfo.textContent = "当前控制方式：键盘方向键";
+                
+                // 隐藏触摸指示器
+                touchAreaIndicator.style.display = "none";
+                clearTouchIndicators();
+            } else {
+                controlMode = 'touch';
+                mouseControlOption.classList.remove('active');
+                keyboardControlOption.classList.remove('active');
+                touchControlOption.classList.add('active');
+                keyControlHint.style.display = 'none';
+                touchControlHint.style.display = 'flex';
+                controlInfo.textContent = "当前控制方式：触摸控制";
             }
             
             // 重置方向
             direction = { x: 1, y: 0 };
             nextDirection = { x: 1, y: 0 };
+        }
+        
+        // 检测设备类型并推荐控制方式
+        function detectDeviceAndRecommendControl() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                // 如果是移动设备，推荐使用触摸控制
+                controlTouchRadio.checked = true;
+                updateControlMode();
+                controlInfo.textContent += " (设备检测为手机，已自动选择触摸控制)";
+            }
         }
         
         // 开始游戏
@@ -1147,6 +1439,12 @@
             if (gamePaused) {
                 gameStatusElement.textContent = "游戏已暂停";
                 gameStatusElement.style.color = "#ffcc00";
+                
+                // 隐藏触摸指示器
+                if (controlMode === 'touch') {
+                    touchAreaIndicator.style.display = "none";
+                    clearTouchIndicators();
+                }
             } else {
                 gameStatusElement.textContent = "游戏进行中...";
                 gameStatusElement.style.color = "#4ecca3";
@@ -1170,16 +1468,29 @@
         // 控制模式切换事件
         controlMouseRadio.addEventListener('change', updateControlMode);
         controlKeyboardRadio.addEventListener('change', updateControlMode);
+        controlTouchRadio.addEventListener('change', updateControlMode);
         
         // 鼠标事件监听
         canvas.addEventListener('mousemove', handleMouseControl);
         
+        // 触摸事件监听
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd);
+        canvas.addEventListener('touchcancel', handleTouchEnd);
+        
         // 键盘事件监听
         document.addEventListener('keydown', handleKeyboardInput);
+        
+        // 防止画布上的上下文菜单
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
         
         // 初始化显示
         initGame();
         updateControlMode();
+        detectDeviceAndRecommendControl();
         highScoreElement.textContent = highScore;
     </script>
 </body>
